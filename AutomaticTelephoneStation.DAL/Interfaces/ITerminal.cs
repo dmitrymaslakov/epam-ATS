@@ -12,8 +12,10 @@ namespace AutomaticTelephoneStation.DAL.Interfaces
         event EventHandler Plugging;
         event EventHandler Unplugging;
         event EventHandler<IContact> Accepting;
-        event EventHandler Dropping;
+        event EventHandler<IContact> Dropping;
+        event EventHandler<string> Notification;
         string Number { get; }
+        ActiveCall ActiveCall { get; set; }
         IStation Operator { get; }
         IEnumerable<IContact> Contacts { get; }
         ISubscriber Owner { get; }
@@ -28,12 +30,20 @@ namespace AutomaticTelephoneStation.DAL.Interfaces
 
         void TryAcceptCall(string number);
 
-        void DropCall();
-
         bool TryAddContact(IContact contact);
 
         void AcceptedCallHandler(object calledParty, IContact caller);
 
+        void DroppedCallHandler(object calledParty, IContact caller);
+
         void PluggingHandler(object sender, EventArgs args);
+
+        void NotificationHandler(object sender, string message);
+
+        void FinishConversation();
+
+        void PrintCalls(Expression<Func<CallDetails, bool>> searchPredicate);
+
+        void AcceptNotification(string message);
     }
 }

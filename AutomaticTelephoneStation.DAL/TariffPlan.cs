@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace AutomaticTelephoneStation.DAL
+﻿namespace AutomaticTelephoneStation.DAL
 {
     public static class TariffPlan
     {

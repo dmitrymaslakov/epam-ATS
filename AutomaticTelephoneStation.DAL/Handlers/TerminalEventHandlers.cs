@@ -10,14 +10,25 @@ namespace AutomaticTelephoneStation.DAL
     {
         public void AcceptedCallHandler(object calledParty, IContact caller)
         {
-            Operator.CollectCallInformation(calledParty, caller);
+            Operator.AddActiveCall(((ITerminal)calledParty).Number, caller.Number);
+        }
+
+        public void DroppedCallHandler(object calledParty, IContact caller)
+        {
+            Operator.ReturnCallParticipantsToInitialState(((ITerminal)calledParty).Number, caller.Number);
+            Operator.SendVoiceMessageTo(caller.Number, $"{caller.GetFullName()}, ваш вызов сброшен");
         }
 
         public void PluggingHandler(object sender, EventArgs args)
         {
             var terminal = (ITerminal)sender;
-            Operator.Ports[terminal.Number].State = PortState.Connected;
+            Operator.Ports[terminal.Number].State = PortState.Free;
             MessagePrinter.PrintToConsole($"{terminal.Owner.GetFullName()}, ваш телефон включен");
+        }
+
+        public void NotificationHandler(object sender, string message)
+        {
+            MessagePrinter.PrintToConsole(message);
         }
     }
 }

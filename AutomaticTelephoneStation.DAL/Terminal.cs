@@ -11,16 +11,19 @@ namespace AutomaticTelephoneStation.DAL
 {
     public partial class Terminal : ITerminal
     {
+        //private string _calledParty;
+
         public event EventHandler Plugging;
         public event EventHandler Unplugging;
         public event EventHandler<IContact> Accepting;
-        public event EventHandler Dropping;
+        public event EventHandler<IContact> Dropping;
+        public event EventHandler<string> Notification;
         public string Number { get; }
+        public ActiveCall ActiveCall { get; set; }
         public IStation Operator { get; }
         private ICollection<IContact> _contacts;
         public IEnumerable<IContact> Contacts => _contacts;
         public ISubscriber Owner { get; }
-
         public Terminal(ISubscriber owner, IStation station)
         {
             Number = GetNumber();
@@ -49,7 +52,7 @@ namespace AutomaticTelephoneStation.DAL
 
         public void Unplug()
         {
-            DropCall();
+            //DropCall();
             OnUnplugging(this, null);
         }
 
@@ -68,6 +71,16 @@ namespace AutomaticTelephoneStation.DAL
             Accepting?.Invoke(calledParty, caller);
         }
 
+        protected virtual void OnDropping(object calledParty, IContact caller)
+        {
+            Dropping?.Invoke(calledParty, caller);
+        }
+
+        protected virtual void OnNotification(object sender, string message)
+        {
+            Notification?.Invoke(sender, message);
+        }
+
         public void Call(IContact calledParty)
         {
             Operator.Ports[Number].State = PortState.Busy;
@@ -77,7 +90,7 @@ namespace AutomaticTelephoneStation.DAL
         public void TryAcceptCall(string number)
         {
             var caller = FindBy(c => c.Number.Equals(number));
-            MessagePrinter.PrintToConsole($"Входящий звонок от {caller.GetFullName()}. Принять вызов? Да - \"y\"; Нет - \"n\"");
+            MessagePrinter.PrintToConsole($"Входящий звонок от {caller.GetFullName()}. Принять вызов? Да - \"y\"; Нет - любой символ");
             var key = Console.ReadKey(true).Key.ToString().ToLower();
 
             switch (key)
@@ -86,18 +99,19 @@ namespace AutomaticTelephoneStation.DAL
                     OnAccepting(this, caller);
                     break;
 
-                case "n":                    
-
                 default:
-
+                    OnDropping(this, caller);
                     break;
             }
-
         }
 
-        public void DropCall()
+        public void FinishConversation()
         {
-            throw new NotImplementedException();
+            if (ActiveCall != null)
+            {
+                Operator.TerminateCall(ActiveCall.CalledNumber, Number);
+                ActiveCall = null;
+            }
         }
 
         public bool TryAddContact(IContact contact)
@@ -116,6 +130,24 @@ namespace AutomaticTelephoneStation.DAL
         public void WriteOutCalls()
         {
             throw new NotImplementedException();
+        }
+
+        public void PrintCalls(Expression<Func<CallDetails, bool>> searchPredicate = null)
+        {
+            var callIndex = Operator.GetCallsIndex(this, searchPredicate);
+            if (callIndex != null)
+            {
+                new CallsProtocol(callIndex).Get();
+            }
+            else
+            {
+                Operator.SendVoiceMessageTo(Number, $"{Owner.GetFullName()}, ваша история звонков пуста");
+            }
+        }
+
+        public void AcceptNotification(string message)
+        {
+            OnNotification(this, message);
         }
 
         private string GetNumber()
